@@ -44,16 +44,12 @@ struct ISharedRef(Alloc,T)
 		@property Alloc allocator(){return _alloc;}
 	}
 
-	this(ref TSharedRef sptr){
-		this._ptr = sptr._ptr;
-		this._dd = sptr._dd;
-		if(_dd) {
-			_dd.strongRef();
-			_dd.weakRef();
-		}
-		static if(!isSaticAlloc)
-			this._alloc = sptr._alloc;
-	}
+    this(this){
+        if (_dd) {
+            _dd.strongRef();
+            _dd.weakRef();
+        }
+    }
 
 	this(ref TWeakRef wptr){
 		internalSet(wptr._dd,wptr._alloc,wptr._ptr);
@@ -108,18 +104,15 @@ struct ISharedRef(Alloc,T)
 		return result;
 	}
 
-	void opAssign(ref TSharedRef rhs){
-		TSharedRef copy = TSharedRef(rhs);
-		swap(copy);
-	}
-
-	void opAssign(ref TWeakRef rhs){
+	void opAssign(TWeakRef rhs){
 		internalSet(rhs._dd,rhs._alloc,rhs._ptr);
 	}
 
-	void opAssign(TSharedRef rhs){
-		swap(rhs);
-	}
+	void opAssign(typeof(this) rv){
+        if(rv._dd is _dd) return;
+        auto copy = rv;
+        swap(copy);
+    }
 
 	static if (isPointer!ValueType) {
 		ref T opUnary(string op)()
@@ -204,13 +197,10 @@ struct IWeakRef(Alloc,T)
 			this._alloc = tref._alloc; 
 	}
 
-	this(ref TWeakRef tref){
-		this._ptr = tref._ptr;
-		this._dd = tref._dd;
-		if(_dd) _dd.weakRef();
-		static if(!isSaticAlloc)
-			this._alloc = tref._alloc;
-	}
+ 	this(this){
+        if (_dd)
+            _dd.weakRef();
+    }
 
 	pragma(inline,true) bool isNull() { return (_dd is null || _ptr is null || _dd.strongref == 0); }
 	pragma(inline,true) ValueType data() { return isNull()  ? null : _ptr; }
@@ -225,17 +215,14 @@ struct IWeakRef(Alloc,T)
 
 	pragma(inline,true) TSharedRef toStrongRef()  { return TSharedRef(this); }
 
-	void opAssign(ref TWeakRef rhs){
-		TWeakRef copy = TWeakRef(rhs);
-		swap(copy);
-	}
+    void opAssign(typeof(this) rv){
+        if(rv._dd is _dd) return;
+        auto copy = rv;
+        swap(copy);
+    }
 	
-	void opAssign(ref TSharedRef rhs){
+	void opAssign(TSharedRef rhs){
 		internalSet(rhs._dd,rhs._alloc,rhs._ptr);
-	}
-
-	void opAssign(TWeakRef rhs){
-		swap(rhs);
 	}
 	
 private:
